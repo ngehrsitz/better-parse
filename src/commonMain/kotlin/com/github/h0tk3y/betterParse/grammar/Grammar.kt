@@ -20,9 +20,16 @@ public abstract class Grammar<out T> : Parser<T> {
 
     private val _parsers = linkedSetOf<Parser<*>>()
 
+    private val _grammars = linkedSetOf<Grammar<*>>()
+
     /** List of tokens that is by default used for tokenizing a sequence before parsing this language. The tokens are
      * added to this list during an instance construction. */
-    public open val tokens: List<Token> get(): List<Token> = _tokens.distinctBy { it.name ?: it }
+    public open val tokens: List<Token>
+        get(): List<Token> {
+            val grammarTokens = _grammars.flatMap { it.tokens }
+            val allTokens: List<Token> = _tokens + grammarTokens
+            return allTokens.distinctBy { it.name ?: it }
+        }
 
     /** Set of the tokens and parsers that were declared by delegation to the parser instances (`val p by someParser`), and [rootParser] */
     public open val declaredParsers: Set<Parser<*>> get() = (_parsers + _tokens + rootParser).toSet()
@@ -39,6 +46,9 @@ public abstract class Grammar<out T> : Parser<T> {
 
     protected operator fun <T> Parser<T>.provideDelegate(thisRef: Grammar<*>, property: KProperty<*>): Parser<T> =
         also { _parsers.add(it) }
+
+    protected operator fun <T> Grammar<T>.provideDelegate(thisRef: Grammar<*>, property: KProperty<*>): Grammar<T> =
+        also { this@Grammar._grammars.add(it) }
 
     protected operator fun <T> Parser<T>.getValue(thisRef: Grammar<*>, property: KProperty<*>): Parser<T> = this
 
